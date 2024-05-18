@@ -1,8 +1,16 @@
 import streamlit as st
 import os
 
+from io import BytesIO
+from microservices.utilities import Utils
+from microservices.svc_preprocessor import PreprocessorFactory
+
+
+utils = Utils()
 
 img_path = '../resources/images/'
+upload_path = '../resources/tmp/uploaded_files/'
+
 dict_format_code = {
     'HTML': f'{img_path}icon_html.png', 
     'PDF': f'{img_path}icon_pdf.png', 
@@ -17,12 +25,11 @@ dict_format_code = {
 EMBEDDING = 'openai'
 VECTOR_STORE = 'faiss'
 MODEL_LIST = ['gpt-4o', 'gpt-4', 'gpt-3.5-turbo']
+
 st.set_page_config(layout='wide')
 
 # sidebar menu
 with st.sidebar:
-
-    col_a1, col_a2, col_a3 = st.columns(3)
 
     st.markdown(
         "## How to use\n"
@@ -30,6 +37,10 @@ with st.sidebar:
         "2. Upload a file of supported format📄\n"
         "3. Ask a question about the document💬\n"
     )
+    with st.expander("See currently supported formats"):
+        col_a1, col_a2, col_a3, col_a4, col_a5, col_a6, col_a7, col_a8 = st.columns(8)
+        with col_a1:
+            st.image(dict_format_code['PDF'])
 
     st.divider()
 
@@ -56,16 +67,13 @@ with st.sidebar:
         return_all_chunks = st.checkbox("Show all chunks retrieved from vector search")
         show_full_doc = st.checkbox("Show parsed contents of the document")
 
-    selected_format = st.selectbox("Upload Document Format", ('HTML', 'PDF', 'DOCX', 'XLSX', 'PPTX', 'CSV', 'Email', 'Video'))
-
-    with col_a2:
-        st.image(dict_format_code[selected_format])
+    #st.divider()
 
     # file uploader
     uploaded_files = st.file_uploader(
         "Choose one of more file(s)", 
         accept_multiple_files=True,
-        type=['pdf', 'docx', 'txt'],
+        type=['pdf'],
         help="Scanned documents are not supported yet!"
     )
 
@@ -73,9 +81,19 @@ with st.sidebar:
         st.stop()
 
     for uploaded_file in uploaded_files:
-        bytes_data = uploaded_file.read()
-        st.write("filename:", uploaded_file.name)
-        #st.write(bytes_data)
+        # stage file for processing
+        file_name = uploaded_file.name
+        file_ext = utils.get_file_extension(file_name)
+        save_directory = f'{upload_path}{file_ext.lower()}'
+        save_path = os.path.join(save_directory, file_name)
+
+        with open(save_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+
+        preprocessor = PreprocessorFactory.create_preprocessor(file_ext)
+        preprocessor.run(save_path)
+
+        st.write("Files uploaded:", file_name)
 
     st.divider()
 
