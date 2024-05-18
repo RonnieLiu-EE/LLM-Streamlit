@@ -1,4 +1,5 @@
 streamlit
 openai
 langchain
-unstructured[pdf]
+python-dotenv
+unstructured[pdf, pptx]
