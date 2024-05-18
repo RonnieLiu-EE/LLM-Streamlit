@@ -1,6 +1,8 @@
 import streamlit as st
+import os
 
-img_path = 'assets/images/'
+
+img_path = '../resources/images/'
 dict_format_code = {
     'HTML': f'{img_path}icon_html.png', 
     'PDF': f'{img_path}icon_pdf.png', 
@@ -12,24 +14,68 @@ dict_format_code = {
     'Video': f'{img_path}icon_video.png'
 }
 
-#st.set_page_config(layout='wide')
+EMBEDDING = 'openai'
+VECTOR_STORE = 'faiss'
+MODEL_LIST = ['gpt-4o', 'gpt-4', 'gpt-3.5-turbo']
+st.set_page_config(layout='wide')
 
 # sidebar menu
 with st.sidebar:
+
     col_a1, col_a2, col_a3 = st.columns(3)
 
+    st.markdown(
+        "## How to use\n"
+        "1. Enter your [OpenAI API key](https://platform.openai.com/account/api-keys) below🔑\n"  # noqa: E501
+        "2. Upload a file of supported format📄\n"
+        "3. Ask a question about the document💬\n"
+    )
+
     st.divider()
+
+    api_key_input = st.text_input(
+        "OpenAI API Key",
+        type="password",
+        placeholder="Paste your OpenAI API key here (sk-...)",
+        help="You can get your API key from https://platform.openai.com/account/api-keys.",  # noqa: E501
+        value=os.environ.get("OPENAI_API_KEY", None)
+        or st.session_state.get("OPENAI_API_KEY", ""),
+    )
+
+    st.session_state["OPENAI_API_KEY"] = api_key_input
+    openai_api_key = st.session_state.get("OPENAI_API_KEY")
+    if not openai_api_key:
+        st.warning(
+            "Enter your OpenAI API key in the sidebar. You can get a key at"
+            " https://platform.openai.com/account/api-keys."
+        )
+
+    # model selector
+    model: str = st.selectbox("Model", options=MODEL_LIST)  # type: ignore
+    with st.expander("Advanced Options"):
+        return_all_chunks = st.checkbox("Show all chunks retrieved from vector search")
+        show_full_doc = st.checkbox("Show parsed contents of the document")
 
     selected_format = st.selectbox("Upload Document Format", ('HTML', 'PDF', 'DOCX', 'XLSX', 'PPTX', 'CSV', 'Email', 'Video'))
 
     with col_a2:
         st.image(dict_format_code[selected_format])
 
-    uploaded_files = st.file_uploader("Choose one of more file(s)", accept_multiple_files=True)
+    # file uploader
+    uploaded_files = st.file_uploader(
+        "Choose one of more file(s)", 
+        accept_multiple_files=True,
+        type=['pdf', 'docx', 'txt'],
+        help="Scanned documents are not supported yet!"
+    )
+
+    if not uploaded_files or len(uploaded_files) == 0:
+        st.stop()
+
     for uploaded_file in uploaded_files:
         bytes_data = uploaded_file.read()
         st.write("filename:", uploaded_file.name)
-        st.write(bytes_data)
+        #st.write(bytes_data)
 
     st.divider()
 
